@@ -1,0 +1,34 @@
+import io
+from colormath.color_objects import RGBColor, CMYKColor
+from colormath.color_conversions import convert_color
+from PyPDF2 import PdfFileReader, PdfFileWriter
+
+# Abre el archivo PDF RGB en modo lectura
+with open('archivo_rgb.pdf', 'rb') as file:
+    pdf_reader = PdfFileReader(file)
+
+    # Crea un archivo PDF CMYK en modo escritura
+    pdf_writer = PdfFileWriter()
+
+    # Itera sobre todas las páginas del archivo PDF RGB
+    for i in range(pdf_reader.getNumPages()):
+        page = pdf_reader.getPage(i)
+
+        # Extrae los bytes del contenido de la página
+        content_bytes = io.BytesIO(page.getContents())
+
+        # Convierte los colores RGB a CMYK en el contenido de la página
+        content = content_bytes.getvalue().decode()
+        for match in re.findall(r'([\d.]+ [\d.]+ [\d.]+) rg', content):
+            rgb = RGBColor(*map(float, match.split()))
+            cmyk = convert_color(rgb, CMYKColor)
+            content = content.replace(match, f"{cmyk.cyan} {cmyk.magenta} {cmyk.yellow} {cmyk.black} k")
+
+        # Agrega la página con el contenido convertido al archivo PDF CMYK
+        output_page = page
+        output_page.__dict__['/Contents'] = content.encode()
+        pdf_writer.addPage(output_page)
+
+    # Guarda el archivo PDF CMYK
+    with open('archivo_cmyk.pdf', 'wb') as output_file:
+        pdf_writer.write(output_file)
